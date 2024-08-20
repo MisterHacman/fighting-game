@@ -2,38 +2,49 @@
 
 Error initPlayer(Player *player, const char *player_name, SDL_Renderer *renderer) {
 	printf("initializing player\n\n");
+	int error;
+
 	Player player_data = {
-		.x = 0, .y = 0,
-		.xvel = 0, .yvel = 0,
+		.x = 0, .y = 0, .xvel = 0, .yvel = 0, .dir = 1,
 		.animation = IDLE, .frame = 0,
-		.frame_counter = 0,
+		.animation_frame_counter = 0,
 		.attached_to_gamepad = 0,
 	};
 	*player = player_data;
 
+	if ((error = initPlayerConstants(player, player_name))) return error;
+
 	printf("initializing player animations\n");
-	int error;
-	if ((error = initAnimationSheets(&player->animation_sheets, player_name, renderer))) return error;
-	if ((error = initAnimationData(&player->animation_data, player_name))) return error;
+	if ((error = initPlayerAnimationSheets(&player->animation_sheets, player_name, renderer))) return error;
+	if ((error = initPlayerAnimationData(&player->animation_data, player_name))) return error;
 
 	return SUCCESS;
 }
 
-int initAnimationSheets(
+Error initPlayerConstants(Player *player, const char *player_name) {
+	printf("initializing player constants\n");
+	if (!strcmp(player_name, "turtle")) {
+		player->xaccel = TURTLE_XACCEL;
+		player->yaccel = TURTLE_YACCEL;
+		player->max_xvel = TURTLE_MAX_XVEL;
+		player->max_yvel = TURTLE_MAX_YVEL;
+	}
+	return SUCCESS;
+}
+
+int initPlayerAnimationSheets(
 		SDL_Texture ** *animation_sheets,
 		const char *player_name,
 		SDL_Renderer *renderer
 ) {
 	printf("loading player animation files\n");
-	*animation_sheets = (SDL_Texture **) malloc(getNumAnimations(player_name) * sizeof(SDL_Texture *));
+	*animation_sheets = (SDL_Texture **) malloc(getPlayerNumAnimations(player_name) * sizeof(SDL_Texture *));
 
-	printf("loading player animation directory\n");
 	char player_directory[20] = "";
 	strcpy(player_directory, "img/");
 	strcat(player_directory, player_name);
 	strcat(player_directory, "/");
 
-	printf("preparing search for animation files\n");
 	struct dirent *dirent_object;
 	DIR *directory = opendir(player_directory);
 	if (!directory) {
@@ -50,7 +61,7 @@ int initAnimationSheets(
 		if (dirent_object->d_name[0] != '.')
 			printf("found file \"%s\"\n", dirent_object->d_name);
 
-		if ((animation_index = getAnimationIndex(dirent_object->d_name)) == -1)
+		if ((animation_index = getPlayerAnimationIndex(dirent_object->d_name)) == -1)
 			continue;
 		strcpy(filename, player_directory);
 		strcat(filename, dirent_object->d_name);
@@ -63,18 +74,18 @@ int initAnimationSheets(
 	return SUCCESS;
 }
 
-int getNumAnimations(const char *player_name) {
+int getPlayerNumAnimations(const char *player_name) {
 	if (!strcmp(player_name, "turtle")) return NUM_TURTLE_ANIMATIONS;
 	return -1;
 }
 
-int getAnimationIndex(const char *animation_name) {
+int getPlayerAnimationIndex(const char *animation_name) {
 	if (!strcmp(animation_name, "idle.png")) return IDLE;
 
 	return -1;
 }
 
-Error initAnimationData(int8_t ** *animation_data, const char *player_name) {
+Error initPlayerAnimationData(int8_t ** *animation_data, const char *player_name) {
 	printf("loading player animation data\n\n");
 	if (!strcmp(player_name, "turtle")) *animation_data = TURTLE_ANIMATION_DATA;
 	return SUCCESS;
@@ -83,11 +94,24 @@ Error initAnimationData(int8_t ** *animation_data, const char *player_name) {
 Error updatePlayer(Player *player) {
 	//printf("updating player\n");
 
-	player->frame_counter *= ++player->frame_counter < PLAYER_FRAME_RATE;
-	player->frame += !player->frame_counter;
+	player->animation_frame_counter++;
+	if (player->animation_frame_counter >= PLAYER_MOVEMENT_FRAMERATE) player->animation_frame_counter = 0;
+	player->frame += !player->animation_frame_counter;
 	player->frame *= player->animation_data[player->animation][player->frame] != -1;
 
-	if (!player->frame_counter) getPlayerInput(&player->control_status, player->controller);
+	player->movement_frame_counter++;
+	if (player->movement_frame_counter >= PLAYER_MOVEMENT_FRAMERATE) player->movement_frame_counter = 0;
+
+	if (!player->movement_frame_counter && !player->freeze_timer) {
+		if (!player->control_status.dodge) {
+			player->xvel += player->control_status.movement_horizontal * player->xaccel;
+			if (abs(player->xvel) > player->max_xvel) player->xvel = player->max_xvel * player->dir;
+		}
+	}
+
+	player->x += player->xvel;
+	player->y += player->yvel;
+	if (player->xvel) player->dir = player->xvel > 0 ? 1 : -1;
 
 	return SUCCESS;
 }

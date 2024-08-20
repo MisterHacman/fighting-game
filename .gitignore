@@ -1,3 +1,7 @@
+# Directories
+obj/
+pxo/
+
 # Prerequisites
 *.d
 

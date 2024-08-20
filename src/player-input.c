@@ -12,33 +12,52 @@ Error initController(Controller *controller, int gamepad_index) {
 	controller_data.strong_attack = SDL_CONTROLLER_BUTTON_A;
 	controller_data.quick_attack = SDL_CONTROLLER_BUTTON_B;
 	controller_data.jump = SDL_CONTROLLER_BUTTON_Y;
+	controller_data.dodge = SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
+	controller_data.parry = SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
 	controller_data.pause = SDL_CONTROLLER_BUTTON_START;
 
 	*controller = controller_data;
 	return SUCCESS;
 }
 
-Error getPlayerInput(ControlStatus *status, Controller controller) {
-	status->movement_horizontal = SDL_GameControllerGetAxis(controller.gamepad, SDL_CONTROLLER_AXIS_LEFTX) > 0x7fff;
-	status->movement_vertical = SDL_GameControllerGetAxis(controller.gamepad, SDL_CONTROLLER_AXIS_LEFTY) > 0x7fff;
-	if (!status->movement_horizontal)
-		status->movement_horizontal =
-			SDL_GameControllerGetButton(controller.gamepad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
-			- SDL_GameControllerGetButton(controller.gamepad, SDL_CONTROLLER_BUTTON_DPAD_LEFT);
-	if (!status->movement_vertical)
-		status->movement_vertical =
-			SDL_GameControllerGetButton(controller.gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP)
-			- SDL_GameControllerGetButton(controller.gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN);
+Error getPlayerAxisInput(ControlStatus *status, Controller controller, SDL_Event event) {
+	if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
+		status->movement_horizontal = event.caxis.value / 0x4001;
+	if (event.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
+		status->movement_vertical = event.caxis.value / 0x401;
 
-	status->strong_attack = SDL_GameControllerGetButton(controller.gamepad, controller.strong_attack);
-	status->quick_attack = SDL_GameControllerGetButton(controller.gamepad, controller.quick_attack);
-	status->jump = SDL_GameControllerGetButton(controller.gamepad, controller.jump);
-	status->pause = SDL_GameControllerGetButton(controller.gamepad, controller.pause);
+	if (event.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
+		status->dodge = event.caxis.value > 0x401;
+	if (event.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
+		status->parry = event.caxis.value > 0x401;
 
-	if (!(status->dodge = SDL_GameControllerGetAxis(controller.gamepad, SDL_CONTROLLER_AXIS_TRIGGERLEFT)))
-		status->dodge = SDL_GameControllerGetButton(controller.gamepad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
-	if (!(status->parry = SDL_GameControllerGetAxis(controller.gamepad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT)))
-		status->parry = SDL_GameControllerGetButton(controller.gamepad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+	return SUCCESS;
+}
+
+Error getPlayerButtonInput(ControlStatus *status, Controller controller, SDL_Event event, bool button_state) {
+	if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT)
+		status->movement_horizontal = -button_state;
+	if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT)
+		status->movement_horizontal = button_state;
+	if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP)
+		status->movement_vertical = button_state;
+	if (event.cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN)
+		status->movement_vertical = -button_state;
+
+	if (event.cbutton.button == controller.strong_attack)
+		status->strong_attack = button_state;
+	if (event.cbutton.button == controller.quick_attack)
+		status->quick_attack = button_state;
+	if (event.cbutton.button == controller.jump)
+		status->jump = button_state;
+
+	if (event.cbutton.button == controller.dodge)
+		status->dodge = button_state;
+	if (event.cbutton.button == controller.parry)
+		status->parry = button_state;
+
+	if (event.cbutton.button == controller.pause)
+		status->pause = button_state;
 
 	return SUCCESS;
 }

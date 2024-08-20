@@ -57,7 +57,8 @@ Error main() {
 		return SDL_ERROR;
 	}
 
-	uint64_t start_time = SDL_GetTicks64(), end_time, delay;
+	uint64_t start_time = SDL_GetTicks64(), end_time, new_time, delay, lowest = 0xffffffffffffffff;
+	float fps;
 	while (game.running) {
 		if ((error = update(&game))) {
 			if (error == SDL_ERROR) SDLError();
@@ -66,6 +67,8 @@ Error main() {
 		}
 		if ((error = draw(game, renderer))) {
 			if (error == SDL_ERROR) SDLError();
+			if (error == FILESYSTEM_ERROR) fprintf(stderr, "fs error\n");
+			if (error == LOGIC_ERROR) fprintf(stderr, "logic error\n");
 			cleanup(game, window, renderer);
 			return error;
 		}
@@ -74,11 +77,14 @@ Error main() {
 		delay = FRAME_RATE - end_time + start_time;
 		SDL_Delay(delay * !(delay & 0x8000000000000000));
 
-		uint64_t new_time = SDL_GetTicks64();
-		printf("running in %f fps\n\n", 1000. / (new_time - start_time));
+		new_time = SDL_GetTicks64();
+		fps = 1000. / (new_time - start_time);
+		//printf("running in %f fps\n\n", fps);
+		if (fps > lowest) lowest = fps;
 		start_time = new_time;
 	}
 
+	printf("lowest fps was %f\n", fps);
 	cleanup(game, window, renderer);
 	return SUCCESS;
 }
@@ -108,8 +114,7 @@ Error update(Game *game) {
 			
 			case SDL_CONTROLLERDEVICEADDED:
 				if (!game->player.attached_to_gamepad && SDL_IsGameController(event.cdevice.which)) {
-					if ((error = initController(&game->player.controller, event.cdevice.which)))
-						return SDL_ERROR;
+					if ((error = initController(&game->player.controller, event.cdevice.which))) return error;
 					game->player.attached_to_gamepad = 1;
 				}
 				break;
@@ -117,23 +122,48 @@ Error update(Game *game) {
 			case SDL_CONTROLLERDEVICEREMOVED:
 				if (event.cdevice.which ==
 						SDL_JoystickInstanceID(
-							SDL_GameControllerGetJoystick(
-								game->player.controller.gamepad))) {
+							SDL_GameControllerGetJoystick(game->player.controller.gamepad))) {
 					game->player.attached_to_gamepad = 0;
+					game->player.controller.gamepad = NULL;
 				}
 				break;
 
 			case SDL_CONTROLLERAXISMOTION:
-				if (!game->player.attached_to_gamepad) {
-					initController(&game->player.controller, event.cdevice.which);
+				if (!game->player.attached_to_gamepad && SDL_IsGameController(event.cdevice.which)) {
+					if ((error = initController(&game->player.controller, event.cdevice.which))) return error;
 					game->player.attached_to_gamepad = 1;
+				}
+				if (event.cdevice.which ==
+						SDL_JoystickInstanceID(
+							SDL_GameControllerGetJoystick(game->player.controller.gamepad))) {
+					if ((error = getPlayerAxisInput(&game->player.control_status, game->player.controller, event)))
+						return error;
 				}
 				break;
 
 			case SDL_CONTROLLERBUTTONDOWN:
-				if (!game->player.attached_to_gamepad) {
-					initController(&game->player.controller, event.cdevice.which);
+				if (!game->player.attached_to_gamepad && SDL_IsGameController(event.cdevice.which)) {
+					if ((error = initController(&game->player.controller, event.cdevice.which))) return error;
 					game->player.attached_to_gamepad = 1;
+				}
+				if (event.cdevice.which ==
+						SDL_JoystickInstanceID(
+							SDL_GameControllerGetJoystick(game->player.controller.gamepad))) {
+					if ((error = getPlayerButtonInput(&game->player.control_status, game->player.controller, event, 1)))
+						return error;
+				}
+				break;
+
+			case SDL_CONTROLLERBUTTONUP:
+				if (!game->player.attached_to_gamepad && SDL_IsGameController(event.cdevice.which)) {
+					if ((error = initController(&game->player.controller, event.cdevice.which))) return error;
+					game->player.attached_to_gamepad = 1;
+				}
+				if (event.cdevice.which ==
+						SDL_JoystickInstanceID(
+							SDL_GameControllerGetJoystick(game->player.controller.gamepad))) {
+					if ((error = getPlayerButtonInput(&game->player.control_status, game->player.controller, event, 0)))
+						return error;
 				}
 				break;
 

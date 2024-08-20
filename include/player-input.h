@@ -18,7 +18,7 @@ typedef uint8_t InputType;
 
 typedef struct {
 	SDL_GameController *gamepad;
-	/*SDL_GameControllerButton*/ uint8_t strong_attack, quick_attack, jump, pause;
+	/*SDL_GameControllerButton*/ uint8_t strong_attack, quick_attack, jump, dodge, parry, pause;
 } Controller;
 
 typedef struct {
@@ -28,6 +28,7 @@ typedef struct {
 
 Error initController(Controller *controller, int gamepad_index);
 
-Error getPlayerInput(ControlStatus *status, Controller controller);
+Error getPlayerAxisInput(ControlStatus *status, Controller controller, SDL_Event event);
+Error getPlayerButtonInput(ControlStatus *status, Controller controller, SDL_Event event, bool button_state);
 
 #endif // PLAYER_INPUT

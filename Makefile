@@ -1,4 +1,4 @@
-TARGET := main
+TARGET := FightingGame.x86_64
 SOURCES := $(wildcard src/*.c)
 OBJECTS := $(patsubst src%,obj%, $(patsubst %.c,%.o,$(SOURCES)))
 
