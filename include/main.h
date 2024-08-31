@@ -1,7 +1,8 @@
 #ifndef _MAIN_H
 #define _MAIN_H
 
-#include "player.h"
+#include "event-handler.h"
+#include "game.h"
 #include "error.h"
 
 #include <stdlib.h>
@@ -14,17 +15,6 @@
 #define WIN_TITLE "Fighting Game"
 #define WIN_FLAGS SDL_WINDOW_SHOWN
 #define REND_FLAGS SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
-
-#define SCREEN_WIDTH 160
-#define SCREEN_HEIGHT 120
-
-#define FRAME_RATE 16
-
-typedef struct {
-	int running;
-	int win_width, win_height;
-	Player player;
-} Game;
 
 Error main();
 Error initGame(Game *game, SDL_Renderer *renderer);

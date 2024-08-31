@@ -57,8 +57,7 @@ Error main() {
 		return SDL_ERROR;
 	}
 
-	uint64_t start_time = SDL_GetTicks64(), end_time, new_time, delay, lowest = 0xffffffffffffffff;
-	float fps;
+	uint64_t start_time = SDL_GetTicks64(), end_time, frame_time, longest = 0, frame_time_sum, frames = 0;
 	while (game.running) {
 		if ((error = update(&game))) {
 			if (error == SDL_ERROR) SDLError();
@@ -74,17 +73,16 @@ Error main() {
 		}
 
 		end_time = SDL_GetTicks64();
-		delay = FRAME_RATE - end_time + start_time;
-		SDL_Delay(delay * !(delay & 0x8000000000000000));
+		frame_time = end_time - start_time;
+		if (frame_time > longest) longest = frame_time;
+		frame_time_sum += frame_time;
+		frames++;
 
-		new_time = SDL_GetTicks64();
-		fps = 1000. / (new_time - start_time);
-		//printf("running in %f fps\n\n", fps);
-		if (fps > lowest) lowest = fps;
-		start_time = new_time;
+		start_time = SDL_GetTicks64();
 	}
 
-	printf("lowest fps was %f\n", fps);
+	printf("longest frame took %ld ms\n", longest);
+	printf("average fps was %f\n", 1000.0 * frames / frame_time_sum);
 	cleanup(game, window, renderer);
 	return SUCCESS;
 }
@@ -97,7 +95,7 @@ Error initGame(Game *game, SDL_Renderer *renderer) {
 	*game = game_data;
 
 	Error error;
-	if ((error = initPlayer(&game->player, "turtle", renderer))) return error;
+	if ((error = initPlayer(&game->player, CAT, renderer))) return error;
 	return SUCCESS;
 }
 
@@ -106,74 +104,13 @@ Error update(Game *game) {
 	Error error;
 
 	SDL_Event event;
-	while (SDL_PollEvent(&event)) {
-		switch (event.type) {
-			case SDL_QUIT:
-				game->running = 0;
-				return SUCCESS;
-			
-			case SDL_CONTROLLERDEVICEADDED:
-				if (!game->player.attached_to_gamepad && SDL_IsGameController(event.cdevice.which)) {
-					if ((error = initController(&game->player.controller, event.cdevice.which))) return error;
-					game->player.attached_to_gamepad = 1;
-				}
-				break;
+	while (SDL_PollEvent(&event))
+		handleEvents(game, event);
 
-			case SDL_CONTROLLERDEVICEREMOVED:
-				if (event.cdevice.which ==
-						SDL_JoystickInstanceID(
-							SDL_GameControllerGetJoystick(game->player.controller.gamepad))) {
-					game->player.attached_to_gamepad = 0;
-					game->player.controller.gamepad = NULL;
-				}
-				break;
-
-			case SDL_CONTROLLERAXISMOTION:
-				if (!game->player.attached_to_gamepad && SDL_IsGameController(event.cdevice.which)) {
-					if ((error = initController(&game->player.controller, event.cdevice.which))) return error;
-					game->player.attached_to_gamepad = 1;
-				}
-				if (event.cdevice.which ==
-						SDL_JoystickInstanceID(
-							SDL_GameControllerGetJoystick(game->player.controller.gamepad))) {
-					if ((error = getPlayerAxisInput(&game->player.control_status, game->player.controller, event)))
-						return error;
-				}
-				break;
-
-			case SDL_CONTROLLERBUTTONDOWN:
-				if (!game->player.attached_to_gamepad && SDL_IsGameController(event.cdevice.which)) {
-					if ((error = initController(&game->player.controller, event.cdevice.which))) return error;
-					game->player.attached_to_gamepad = 1;
-				}
-				if (event.cdevice.which ==
-						SDL_JoystickInstanceID(
-							SDL_GameControllerGetJoystick(game->player.controller.gamepad))) {
-					if ((error = getPlayerButtonInput(&game->player.control_status, game->player.controller, event, 1)))
-						return error;
-				}
-				break;
-
-			case SDL_CONTROLLERBUTTONUP:
-				if (!game->player.attached_to_gamepad && SDL_IsGameController(event.cdevice.which)) {
-					if ((error = initController(&game->player.controller, event.cdevice.which))) return error;
-					game->player.attached_to_gamepad = 1;
-				}
-				if (event.cdevice.which ==
-						SDL_JoystickInstanceID(
-							SDL_GameControllerGetJoystick(game->player.controller.gamepad))) {
-					if ((error = getPlayerButtonInput(&game->player.control_status, game->player.controller, event, 0)))
-						return error;
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
 	if ((error = updatePlayer(&game->player))) return error;
 	return SUCCESS;
 }
+
 
 Error draw(Game game, SDL_Renderer *renderer) {
 	Error error;
