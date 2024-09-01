@@ -11,9 +11,9 @@
 
 #define BUTTON 0
 #define JOYSTICK 1
+typedef uint8_t InputType;
 
 typedef uint8_t bool;
-typedef uint8_t InputType;
 typedef uint8_t InputId;
 typedef InputId Button;
 

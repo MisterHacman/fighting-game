@@ -12,7 +12,6 @@
 #define SDL_IMG_ERROR 2
 #define FILESYSTEM_ERROR 3
 #define LOGIC_ERROR 4
-
 typedef int Error;
 
 void SDLError();

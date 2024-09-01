@@ -26,19 +26,44 @@
 
 typedef uint8_t bool;
 
-typedef struct {
-	int16_t x, y, xvel, yvel;
-	uint8_t dir, xaccel, yaccel, max_xvel, max_yvel;
+#define CAT 0
+typedef uint32_t PlayerId;
 
-	SDL_Texture *textures;
+typedef struct {
+	float length;
+	int8_t connection;
+} Limb;
+
+#define HEAD -1
+#define CHEST 0
+#define BOTTOM 1
+#define LEFT_ELBOW 2
+#define RIGHT_ELBOW 3
+#define LEFT_KNEE 4
+#define RIGHT_KNEE 5
+static const Limb CAT_BODY[] = {
+	{ .length = 1.0, .connection = HEAD }, 			// Neck
+	{ .length = 1.1, .connection = CHEST }, 		// Back
+	{ .length = 0.5, .connection = CHEST }, 		// Left upper arm
+	{ .length = 0.5, .connection = CHEST }, 		// Right upper arm
+	{ .length = 0.5, .connection = BOTTOM },		// Left thigh
+	{ .length = 0.5, .connection = BOTTOM },		// Right thigh
+	{ .length = 0.5, .connection = LEFT_ELBOW }, 	// Left forearm
+	{ .length = 0.5, .connection = RIGHT_ELBOW },	// Right forearm
+	{ .length = 0.5, .connection = LEFT_KNEE },		// Left calf 
+	{ .length = 0.5, .connection = RIGHT_KNEE },	// Right calf
+};
+
+typedef struct {
+	PlayerId id;
+
+	struct { float x, y, xvel, yvel; } head;
+	int8_t dir;
 
 	bool attached_to_gamepad;
 	Controller controller;
 	ControlStatus control_status;
 } Player;
-
-#define CAT 0
-typedef const uint32_t PlayerId;
 
 Error initPlayer(Player *player, PlayerId player_name, SDL_Renderer *renderer);
 

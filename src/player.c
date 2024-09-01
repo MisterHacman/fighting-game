@@ -5,7 +5,9 @@ Error initPlayer(Player *player, PlayerId player_id, SDL_Renderer *renderer) {
 	int error;
 
 	Player player_data = {
-		.x = 0, .y = 0, .xvel = 0, .yvel = 0, .dir = 1,
+		.id = player_id,
+		.head = {.x = 0, .y = 0, .xvel = 0, .yvel = 0},
+		.dir = 1,
 		.attached_to_gamepad = 0,
 		.controller = DEFAULT_CONTROLLER,
 		.control_status = { 0, 0, 0, 0, 0, 0 },
@@ -26,13 +28,6 @@ Error initPlayerConstants(Player *player, PlayerId player_id) {
 
 Error updatePlayer(Player *player) {
 	//printf("updating player\n");
-
-	player->xvel += player->control_status.horizontal * player->xaccel;
-	if (abs(player->xvel) > player->max_xvel) player->xvel = player->max_xvel * player->dir;
-
-	player->x += player->xvel;
-	player->y += player->yvel;
-	if (player->xvel) player->dir = player->xvel > 0 ? 1 : -1;
 
 	return SUCCESS;
 }
